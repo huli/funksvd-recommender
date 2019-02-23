@@ -8,12 +8,12 @@ def get_movie_names(movie_ids, movies_df):
     movies_df - original movies dataframe
     OUTPUT
     movies - a list of movie names associated with the movie_ids
-
     '''
-    # Read in the datasets
-    movie_lst = list(movies_df[movies_df['movie_id'].isin(movie_ids)]['movie'])
 
-    return movie_lst
+    # Find the movies by id and return their names
+    movie_names = list(movies_df[movies_df['movie_id'].isin(movie_ids)]['movie'])
+    
+    return movie_names
 
 
 def create_ranked_df(movies, reviews):
@@ -43,8 +43,8 @@ def create_ranked_df(movies, reviews):
         # sort by top avg rating and number of ratings
         ranked_movies = movie_recs.sort_values(['avg_rating', 'num_ratings', 'last_rating'], ascending=False)
 
-        # for edge cases - subset the movie list to those with only 5 or more reviews
-        ranked_movies = ranked_movies[ranked_movies['num_ratings'] > 4]
+        # for edge cases - subset the movie list to those with 5 or more reviews
+        ranked_movies = ranked_movies[ranked_movies['num_ratings'] >= 5]
 
         return ranked_movies
 
@@ -57,6 +57,7 @@ def find_similar_movies(movie_id, movies_df):
     OUTPUT
     similar_movies - an array of the most similar movies by title
     '''
+
     # dot product to get similar movies
     movie_content = np.array(movies_df.iloc[:,4:])
     dot_prod_movies = movie_content.dot(np.transpose(movie_content))
@@ -64,7 +65,8 @@ def find_similar_movies(movie_id, movies_df):
     # find the row of each movie id
     movie_idx = np.where(movies_df['movie_id'] == movie_id)[0][0]
 
-    # find the most similar movie indices - to start I said they need to be the same for all content
+    # find the most similar movie indices - to start we take 
+    # only movies with the exact same rating
     similar_idxs = np.where(dot_prod_movies[movie_idx] == np.max(dot_prod_movies[movie_idx]))[0]
 
     # pull the movie titles based on the indices
