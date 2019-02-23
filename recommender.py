@@ -126,7 +126,7 @@ class Recommender():
         OUTPUT:
         pred - the predicted rating for user_id-movie_id according to FunkSVD
         '''
-
+        
         try:
             user_row = self.find_index(user_id, self.user_ids_series)
             movie_column = self.find_index(movie_id, self.movie_ids_series)
@@ -146,7 +146,7 @@ class Recommender():
     def find_movie_name(self, movie_id):
         ''' Extracts the movie name from the rather unclean data set '''
 
-        movie_name = str(self.movies[self.movies['movie_id']== movie_id]['movie'])[:5]
+        movie_name = str(self.movies[self.movies['movie_id']== movie_id]['movie'])[5:]
         return movie_name.replace('\nName: movie, dtype: object', '')
 
     def find_index(self, serie, id):
@@ -190,7 +190,7 @@ class Recommender():
         if movie_id in self.movie_ids_series:
             return list(rf.find_similar_movies(movie_id, self.movies))[:num_of_recs]
         else:
-            self.set_status('Movie not in database. Sorry, no recommendations for you')
+            self.set_status('Movie not in database. Sorry, no recommendations for you!')
 
 if __name__ == '__main__':
     
@@ -201,14 +201,14 @@ if __name__ == '__main__':
     recommender.fit(reviews_path='data/train_data.csv', movies_path= 'data/movies_clean.csv', 
         learning_rate=.01, iters=10)
 
-    # Make prediction for user
-    recommender.predict_rating(user_id=8, movie_id=2844)
-
-    # make recommendations
-    print(recommender.make_recommendations(8,'user')) # user in the dataset
-    print(recommender.make_recommendations(1,'user')) # user not in dataset
-    print(recommender.make_recommendations(1853728)) # movie in the dataset
-    print(recommender.make_recommendations(1)) # movie not in dataset
-    print(recommender.n_users)
-    print(recommender.n_movies)
-    print(recommender.n_ratings)
+    # Make various predictions
+    print('Predict rating for known user and know movie:')
+    print(recommender.predict_rating(user_id=8, movie_id=2844))
+    print('Make recommendation for know user:')
+    print(recommender.make_recommendations(8,'user'))
+    print('Make recommendation for unknow user:')
+    print(recommender.make_recommendations(1,'user'))
+    print('Find neighbours for known movie:')
+    print(recommender.make_recommendations(1853728))
+    print('Find neighbours for unknown movie:')
+    print(recommender.make_recommendations(1))
