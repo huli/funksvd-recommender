@@ -18,7 +18,7 @@ class Recommender():
         No initialization at the moment
         '''
 
-    def set_status(self, status)
+    def set_status(self, status):
         print('[{}] - {}'.format(datetime.datetime.now().time(), status))
 
     def fit(self, reviews_path, movies_path, latent_features=12, learning_rate=0.0001, iters=100):
@@ -57,7 +57,7 @@ class Recommender():
         # Create user item-matrix from all provided reviews
         self.set_status('Creating user-item matrix...')
         user_items = self.reviews[['user_id', 'movie_id', 'rating', 'timestamp']]
-        self.user_item_df = usr_itm.groupby(['user_id','movie_id'])['rating'].max().unstack()
+        self.user_item_df = user_items.groupby(['user_id','movie_id'])['rating'].max().unstack()
         self.user_item_mat = np.array(self.user_item_df)
 
         # Set up useful values to be used through the rest of the function
@@ -96,10 +96,10 @@ class Recommender():
 
                         # Update the values in both matrices in the direction of the gradient
                         for k in range(self.latent_features):
-                            user_mat[u, k] += self.learning_rate * (2 * error * movie_mat[k, m])
-                            movie_mat[k, m] += self.learning_rate * (2 * error * user_mat[u, k])
+                            user_mat[user, k] += self.learning_rate * (2 * error * movie_mat[k, movie])
+                            movie_mat[k, movie] += self.learning_rate * (2 * error * user_mat[user, k])
 
-            self.set_status('{:>20} iteration: {:>10.5f} MSE'.format(iter+1, sse_accum/self.n_ratings))
+            self.set_status('\t{}\t\t{:>6.3f} MSE'.format(iter+1, sse_accum/self.n_ratings))
                     
         self.set_status('Stopped gradient descent optimization...')
 
@@ -109,7 +109,7 @@ class Recommender():
 
         # Perform knowlege based fit
         self.set_status('Performing knowlege based fit...')
-        self.ranked_movies = rf.create_ranked_df(self.movie, self.reviews)
+        self.ranked_movies = rf.create_ranked_df(self.movies, self.reviews)
 
         self.set_status('Fitting finished.')
         
@@ -147,7 +147,7 @@ class Recommender():
         ''' Extracts the movie name from the rather unclean data set '''
 
         movie_name = str(self.movies[self.movies['movie_id']== movie_id]['movie'])[:5]
-        movie_name = movie_name.replace('\nName: movie, dtype: object', '')
+        return movie_name.replace('\nName: movie, dtype: object', '')
 
     def find_index(self, serie, id):
         ''' Returns index of row or column from id in serie '''
@@ -172,37 +172,43 @@ class Recommender():
             user_index = self.find_index(self.user_ids_series, _id)
 
             # Calculate prediction with dot product (U . V)
-            prediction = np.dot(self.user_mat[user_index, :], self.user_mat)
+            prediction = np.dot(self.user_mat[user_index, :], self.movie_mat)
 
             # Find closest movies
             movie_indices = prediction.argsort()[-num_of_recs:][::-1]
             movie_ids = self.movie_ids_series[movie_indices]
             movie_names = rf.get_movie_names(movie_ids, self.movies)
+            return movie_ids, movie_names
 
-        return movie_ids, movie_names
+        else:
+            movie_names = rf.popular_recommendations(num_of_recs, self.ranked_movies)
+            self.set_status('User not in database. Falling back to ranking based recommendation.')
+            return None, movie_names
 
-
-    def recommend_most_similar_movies(self, movie_id, num_of_recs):
+    def recommend_closest_movies(self, movie_id, num_of_recs):
         ''' Recommends the closest movies based on euclidean distance metric '''
-        return rf.popular_recommendations(movie_id, num_of_recs, self.ranked_movies)
+        if movie_id in self.movie_ids_series:
+            return list(rf.find_similar_movies(movie_id, self.movies))[:num_of_recs]
+        else:
+            self.set_status('Movie not in database. Sorry, no recommendations for you')
 
 if __name__ == '__main__':
     
     import recommender as r
 
     # Instantiate and fit recommender
-    rec = r.Recommender()
-    rec.fit(reviews_path='data/train_data.csv', movies_path= 'data/movies_clean.csv', 
+    recommender = r.Recommender()
+    recommender.fit(reviews_path='data/train_data.csv', movies_path= 'data/movies_clean.csv', 
         learning_rate=.01, iters=10)
 
     # Make prediction for user
-    rec.predict_rating(user_id=8, movie_id=2844)
+    recommender.predict_rating(user_id=8, movie_id=2844)
 
     # make recommendations
-    print(rec.make_recommendations(8,'user')) # user in the dataset
-    print(rec.make_recommendations(1,'user')) # user not in dataset
-    print(rec.make_recommendations(1853728)) # movie in the dataset
-    print(rec.make_recommendations(1)) # movie not in dataset
-    print(rec.n_users)
-    print(rec.n_movies)
-    print(rec.num_ratings)
+    print(recommender.make_recommendations(8,'user')) # user in the dataset
+    print(recommender.make_recommendations(1,'user')) # user not in dataset
+    print(recommender.make_recommendations(1853728)) # movie in the dataset
+    print(recommender.make_recommendations(1)) # movie not in dataset
+    print(recommender.n_users)
+    print(recommender.n_movies)
+    print(recommender.n_ratings)

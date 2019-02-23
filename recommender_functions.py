@@ -75,10 +75,9 @@ def find_similar_movies(movie_id, movies_df):
     return similar_movies
 
 
-def popular_recommendations(user_id, n_top, ranked_movies):
+def popular_recommendations(n_top, ranked_movies):
     '''
     INPUT:
-    user_id - the user_id (str) of the individual you are making recommendations for
     n_top - an integer of the number recommendations you want back
     ranked_movies - a pandas dataframe of the already ranked movies based on avg rating, count, and time
 
