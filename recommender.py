@@ -117,17 +117,92 @@ class Recommender():
     def rating_exists(self, user, movie):
         return self.user_item_mat[user, movie] > 0
         
-    def predict_rating(self, ):
+    def predict_rating(self, user_id, movie_id):
         '''
-        makes predictions of a rating for a user on a movie-user combo
+        INPUT:
+        user_id - the user_id from the reviews df
+        movie_id - the movie_id according the movies df
+
+        OUTPUT:
+        pred - the predicted rating for user_id-movie_id according to FunkSVD
         '''
 
-    def make_recs(self,):
+        try:
+            user_row = self.find_index(user_id, self.user_ids_series)
+            movie_column = self.find_index(movie_id, self.movie_ids_series)
+
+            # Caculate prediction with dot product (U . V)
+            prediction = np.dot(self.user_mat[user_row, :], self.movie_mat[:, movie_column])
+
+            movie_name = self.find_movie_name(movie_id)
+            self.set_status('Prediction for user {} and movie {}: {:.0f}'.format(user_id, movie_name, prediction))
+
+            return prediction
+        
+        except:
+            self.set_status('Prediction not feasible. User {} or Movie {} not in database!'.format(user_id, movie_id))
+
+
+    def find_movie_name(self, movie_id):
+        ''' Extracts the movie name from the rather unclean data set '''
+
+        movie_name = str(self.movies[self.movies['movie_id']== movie_id]['movie'])[:5]
+        movie_name = movie_name.replace('\nName: movie, dtype: object', '')
+
+    def find_index(self, serie, id):
+        ''' Returns index of row or column from id in serie '''
+        return np.where(serie == id)[0][0]
+
+    def make_recommendations(self, _id, _id_type='movie', num_of_recs=5):
         '''
-        given a user id or a movie that an individual likes
-        make recommendations
+        INPUT:
+        _id - either a user or movie id (int)
+        _id_type - "movie" or "user" (str)
+        num_of_recs - number of recommendations to return (int)
+
+        OUTPUT:
+        recs - (array) a list or numpy array of recommended movies like the
+                        given movie, or recs for a user_id given
         '''
 
+        if _id_type == 'movie':
+            return self.recommend_closest_movies(_id, num_of_recs)
+        
+        if _id in self.user_ids_series:
+            user_index = self.find_index(self.user_ids_series, _id)
+
+            # Calculate prediction with dot product (U . V)
+            prediction = np.dot(self.user_mat[user_index, :], self.user_mat)
+
+            # Find closest movies
+            movie_indices = prediction.argsort()[-num_of_recs:][::-1]
+            movie_ids = self.movie_ids_series[movie_indices]
+            movie_names = rf.get_movie_names(movie_ids, self.movies)
+
+        return movie_ids, movie_names
+
+
+    def recommend_most_similar_movies(self, movie_id, num_of_recs):
+        ''' Recommends the closest movies based on euclidean distance metric '''
+        return rf.popular_recommendations(movie_id, num_of_recs, self.ranked_movies)
 
 if __name__ == '__main__':
-    # test different parts to make sure it works
+    
+    import recommender as r
+
+    # Instantiate and fit recommender
+    rec = r.Recommender()
+    rec.fit(reviews_path='data/train_data.csv', movies_path= 'data/movies_clean.csv', 
+        learning_rate=.01, iters=10)
+
+    # Make prediction for user
+    rec.predict_rating(user_id=8, movie_id=2844)
+
+    # make recommendations
+    print(rec.make_recommendations(8,'user')) # user in the dataset
+    print(rec.make_recommendations(1,'user')) # user not in dataset
+    print(rec.make_recommendations(1853728)) # movie in the dataset
+    print(rec.make_recommendations(1)) # movie not in dataset
+    print(rec.n_users)
+    print(rec.n_movies)
+    print(rec.num_ratings)
