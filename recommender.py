@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import datetime
-import recommender_functions as rf
 import sys 
+from rank_recommender import RankBasedRecommender
 
 class Recommender():
     '''
@@ -14,9 +14,7 @@ class Recommender():
     '''
 
     def __init__(self, ):
-        '''
-        No initialization at the moment
-        '''
+        self.rank_recommender = RankBasedRecommender()
 
     def set_status(self, status):
         print('[{}] - {}'.format(datetime.datetime.now().time(), status))
@@ -109,7 +107,7 @@ class Recommender():
 
         # Perform knowlege based fit
         self.set_status('Performing knowlege based fit...')
-        self.ranked_movies = rf.create_ranked_df(self.movies, self.reviews)
+        self.rank_recommender.fit(self.movies, self.reviews)
 
         self.set_status('Fitting finished.')
         
@@ -126,7 +124,7 @@ class Recommender():
         OUTPUT:
         pred - the predicted rating for user_id-movie_id according to FunkSVD
         '''
-        
+
         try:
             user_row = self.find_index(user_id, self.user_ids_series)
             movie_column = self.find_index(movie_id, self.movie_ids_series)
@@ -165,6 +163,8 @@ class Recommender():
                         given movie, or recs for a user_id given
         '''
 
+        movie_ids, movie_names = None, None
+
         if _id_type == 'movie':
             return self.recommend_closest_movies(_id, num_of_recs)
         
@@ -177,20 +177,60 @@ class Recommender():
             # Find closest movies
             movie_indices = prediction.argsort()[-num_of_recs:][::-1]
             movie_ids = self.movie_ids_series[movie_indices]
-            movie_names = rf.get_movie_names(movie_ids, self.movies)
-            return movie_ids, movie_names
+            movie_names = get_movie_names(movie_ids, self.movies)
 
         else:
-            movie_names = rf.popular_recommendations(num_of_recs, self.ranked_movies)
             self.set_status('User not in database. Falling back to ranking based recommendation.')
-            return None, movie_names
+            movie_names = self.rank_recommender.predict(num_of_recs)
+
+        self.set_status('Movie recommendations for user {}: {}'.format(_id, movie_names))
+        return movie_ids, movie_names
 
     def recommend_closest_movies(self, movie_id, num_of_recs):
         ''' Recommends the closest movies based on euclidean distance metric '''
         if movie_id in self.movie_ids_series:
-            return list(rf.find_similar_movies(movie_id, self.movies))[:num_of_recs]
+            return list(find_similar_movies(movie_id, self.movies))[:num_of_recs]
         else:
             self.set_status('Movie not in database. Sorry, no recommendations for you!')
+
+def get_movie_names(movie_ids, movies_df):
+    '''
+    INPUT
+    movie_ids - a list of movie_ids
+    movies_df - original movies dataframe
+    OUTPUT
+    movies - a list of movie names associated with the movie_ids
+    '''
+
+    # Find the movies by id and return their names
+    movie_names = list(movies_df[movies_df['movie_id'].isin(movie_ids)]['movie'])
+    
+    return movie_names
+
+def find_similar_movies(movie_id, movies_df):
+    '''
+    INPUT
+    movie_id - a movie_id
+    movies_df - original movies dataframe
+    OUTPUT
+    similar_movies - an array of the most similar movies by title
+    '''
+
+    # dot product to get similar movies
+    movie_content = np.array(movies_df.iloc[:,4:])
+    dot_prod_movies = movie_content.dot(np.transpose(movie_content))
+
+    # find the row of each movie id
+    movie_idx = np.where(movies_df['movie_id'] == movie_id)[0][0]
+
+    # find the most similar movie indices - to start we take 
+    # only movies with the exact same rating
+    similar_idxs = np.where(dot_prod_movies[movie_idx] == np.max(dot_prod_movies[movie_idx]))[0]
+
+    # pull the movie titles based on the indices
+    similar_movies = np.array(movies_df.iloc[similar_idxs, ]['movie'])
+
+    return similar_movies
 
 if __name__ == '__main__':
     
@@ -199,16 +239,17 @@ if __name__ == '__main__':
     # Instantiate and fit recommender
     recommender = r.Recommender()
     recommender.fit(reviews_path='data/train_data.csv', movies_path= 'data/movies_clean.csv', 
-        learning_rate=.01, iters=10)
+        learning_rate=.01, iters=1)
 
     # Make various predictions
     print('Predict rating for known user and know movie:')
-    print(recommender.predict_rating(user_id=8, movie_id=2844))
+    recommender.predict_rating(user_id=8, movie_id=2844)
+
     print('Make recommendation for know user:')
-    print(recommender.make_recommendations(8,'user'))
+    recommender.make_recommendations(8,'user')
     print('Make recommendation for unknow user:')
-    print(recommender.make_recommendations(1,'user'))
+    recommender.make_recommendations(1,'user')
     print('Find neighbours for known movie:')
-    print(recommender.make_recommendations(1853728))
+    recommender.make_recommendations(1853728)
     print('Find neighbours for unknown movie:')
-    print(recommender.make_recommendations(1))
+    recommender.make_recommendations(1)
