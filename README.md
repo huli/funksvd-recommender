@@ -40,20 +40,24 @@ recommender.predict_rating(user_id=8, movie_id=2844)
 
 # Make recommendation for know user
 recommender.make_recommendations(8,'user')
-# -> Movie recommendations for user 8: ['Life of Pi (2012)', 'The Hobbit: An Unexpected Journey (2012)', 'Silver Linings Playbook (2012)', 'The Intouchables (2011)', 'Django Unchained (2012)']
+# -> Movie recommendations for user 8: ['Life of Pi (2012)', 'The Hobbit: An Unexpected Journey (2012)', 
+# 'Silver Linings Playbook (2012)', 'The Intouchables (2011)', 'Django Unchained (2012)']
 
 # Make recommendation for unknow user
 recommender.make_recommendations(1,'user')
 # -> [10:32:18.565847] - User not in database. Falling back to ranking based recommendation.
-# -> [10:32:18.566848] - Movie recommendations for user 1: ['Goodfellas (1990)' 'Step Brothers (2008)' 'American Beauty  (1999)' 'There Will Be Blood (2007)' 'Gran Torino (2008)']
+# -> [10:32:18.566848] - Movie recommendations for user 1: ['Goodfellas (1990)' 'Step Brothers (2008)' 
+# 'American Beauty  (1999)' 'There Will Be Blood (2007)' 'Gran Torino (2008)']
 
 # Find neighbours for known movie
 recommender.make_recommendations(1853728)
-# -> 
+# -> [10:48:57.621563] - Based on your movie 1853728 we recommend following neighbours: 
+# ['Fahrenheit 451 (2018)' 'Death Wish (2018)' 'Den of Thieves (2018)' 
+# 'The Guernsey Literary and Potato Peel Pie Society (2018)' 'Tomb Raider (2018)']
 
 # Find neighbours for unknown movie
 recommender.make_recommendations(1)
-# -> 
+# -> [10:48:57.623562] - Movie 1 not in database. Sorry, no recommendations for you!
 
 ```
 
