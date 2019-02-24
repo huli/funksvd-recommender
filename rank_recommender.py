@@ -28,9 +28,9 @@ class RankBasedRecommender():
         top_movies - a list of the n_top recommended movies by movie title in order best to worst
         '''
 
-        top_movies = list(self.ranked_movies['movie'][:n_top])
+        top_movies = self.ranked_movies['movie'][:n_top]
 
-        return top_movies
+        return top_movies.index.values, top_movies.values
             
     def create_ranked_df(self, movies, reviews):
         '''
